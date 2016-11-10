@@ -109,8 +109,8 @@ public class CorePoint {
         FloatRawIndexer yId = grad_y.createIndexer();
         for(int i = 1; i < img.rows() - 1; i++){
             for(int j = 1; j < img.cols() - 1; j++){
-                float px = sobelDerivativeX(j, i, img);
-                float py = sobelDerivativeY(j, i, img);
+                float px = sobelDerivativeX(i, j, img);
+                float py = sobelDerivativeY(i, j, img);
                 xId.put(i, j,  px);
                 yId.put(i, j,  py);
             }
@@ -216,7 +216,7 @@ public class CorePoint {
         for(int r = 0; r < siglar.rows(); r++){
             for(int c = 0; c < siglar.cols(); c++){
                 if(index.get(r, c) == 1.0){
-                    opencv_imgproc.circle(rgb,new Point(c * 10, r *10), 3, org.bytedeco.javacpp.helper.opencv_core.AbstractScalar.CYAN);
+                    opencv_imgproc.circle(rgb,new Point(r * 10, c * 10), 3, org.bytedeco.javacpp.helper.opencv_core.AbstractScalar.CYAN);
                 }
             }
         }
@@ -232,7 +232,7 @@ public class CorePoint {
             }
             label += subAngles(deg[ele], deg[ele+1]);
         }
-        if (label <= (-180 + 1 )&& label >= (-180 - 1 )){
+        if (label <= (180 + 1 )&& label >= (180 - 1 )){
             return 1.0;
         }
         return 0.0 ;
@@ -264,17 +264,15 @@ public class CorePoint {
     }
     
     public double[] convertToDeg(Mat radians, int x, int y){
-        
         int[][] neg = {{-1, -1}, {-1, 0}, {-1, 1}, {0, 1}, {1, 1}, {1, 0}, {1, -1}, {0, -1}, {-1, -1}};
         double[] deg = new double[9];
         DoubleRawIndexer rad = radians.createIndexer();
         for( int i = 0; i < neg.length; i++){
             double d = Math.toDegrees(rad.get(x - neg[i][0], y - neg[i][1]));
             if(d < 0){
-                d = 180 + d;
+                d += 180;
             }
             deg[i] = d;
-
         }
         return deg;
     }
