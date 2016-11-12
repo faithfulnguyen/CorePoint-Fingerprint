@@ -5,7 +5,9 @@
  */
 package corepoint;
 
+import corepoint.Point;
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Arrays;
 import org.bytedeco.javacpp.indexer.DoubleRawIndexer;
 import org.bytedeco.javacpp.indexer.FloatRawIndexer;
@@ -13,13 +15,9 @@ import org.bytedeco.javacpp.indexer.UByteRawIndexer;
 import org.bytedeco.javacpp.opencv_core;
 import static org.bytedeco.javacpp.opencv_core.BORDER_DEFAULT;
 import static org.bytedeco.javacpp.opencv_core.CV_32F;
-import static org.bytedeco.javacpp.opencv_core.CV_PI;
 import org.bytedeco.javacpp.opencv_core.Mat;
-import org.bytedeco.javacpp.opencv_core.Point;
-import org.bytedeco.javacpp.opencv_core.Scalar;
+import org.bytedeco.javacpp.opencv_core.Rect;
 import org.bytedeco.javacpp.opencv_core.Size;
-import static org.bytedeco.javacpp.opencv_core.print;
-import org.bytedeco.javacpp.opencv_highgui;
 import org.bytedeco.javacpp.opencv_imgcodecs;
 import static org.bytedeco.javacpp.opencv_imgcodecs.imread;
 import static org.bytedeco.javacpp.opencv_imgcodecs.imwrite;
@@ -45,15 +43,17 @@ public class CorePoint {
         Arrays.sort(listOfFiles);
         for(int i = 0; i < listOfFiles.length; i++){
             if (listOfFiles[i].getName().contains(".tif")){
-                //opencv_core.Mat img = imread ("src/corepoint/img.jpg", opencv_imgcodecs.CV_LOAD_IMAGE_GRAYSCALE);
+                //opencv_core.Mat img = imread ("src/corepoint/2_4.tif", opencv_imgcodecs.CV_LOAD_IMAGE_GRAYSCALE);
                 String name =  listOfFiles[i].getName();
                 opencv_core.Mat img = imread (fileName + name, opencv_imgcodecs.CV_LOAD_IMAGE_GRAYSCALE);
                 resize(img, img, new Size(120,120));
+                //Mat seg = segmentImage(img);
                 Mat normailizedImg = normalizeSubWindow(img);
                 CorePoint cr = new CorePoint();
                 Mat[] ori = cr.localSmooth(normailizedImg);
                 Mat smooth = cr.smoothedOrientation(ori[0], ori[1]);
-                cr.poinCare(smooth, normailizedImg, listOfFiles[i].getName());
+                cr.poinCare(smooth, img, listOfFiles[i].getName());
+                //cr.euclidean();
             }
         }   
     }
@@ -99,6 +99,28 @@ public class CorePoint {
         }
         sum /= (img.cols() * img.rows());
         return sum;  
+    }
+  
+    public static Mat segmentImage(Mat img){
+        int w = 8;
+        int rs = img.rows();
+        int cs = img.cols();
+        for(int i = 0; i < img.rows(); i+= w){
+            for(int j = 0; j < img.cols(); j++){
+                Mat tmp = img.apply(new opencv_core.Rect(j, i, Math.min(w, rs - j), Math.min(w, cs - i)));
+                double mea = meanMatrix(tmp);
+                double var = variance(tmp, mea);
+                if(var < 40){
+                    UByteRawIndexer idx = tmp.createIndexer();
+                    for(int r = 0; r < tmp.rows(); r++){
+                        for(int c = 0; c < tmp.cols(); c++){
+                            idx.put(r, c, 0);
+                        }
+                    }
+                }
+            }
+        }
+        return img;
     }
     
     public Mat[] sobelDerivatives(Mat img){
@@ -154,7 +176,7 @@ public class CorePoint {
     	int ori_i = 0;
     	int ori_j = 0;
         int r =  blck_sbl_x.rows();
-        int c= blck_sbl_y.cols();
+        int c = blck_sbl_y.cols();
     	for(int i = 1; i <  blck_sbl_x.rows(); i += w){
             for(int j = 1; j < blck_sbl_x.cols(); j += w){
                 Mat sbX = blck_sbl_x.apply(new opencv_core.Rect(j, i, Math.min(w, r - j), Math.min(w, c - i)));
@@ -201,29 +223,73 @@ public class CorePoint {
         }
     	return smooth;
     }
-   
-    public void poinCare(Mat smooth, Mat img, String name){
-        Mat siglar = smooth.clone();
-    	DoubleRawIndexer index = siglar.createIndexer();
+      
+    public Mat poinCare(Mat smooth, Mat img, String name){
+        opencv_core.MatExpr siglar = new Mat().zeros(smooth.size(), CV_32F);
+        Mat label = siglar.asMat();
+    	FloatRawIndexer index = label.createIndexer();
         Mat rgb = new Mat();
+        ArrayList<Point> coor = new ArrayList<>();
+        Mat crop = new Mat();
         opencv_imgproc.cvtColor(img, rgb, CV_GRAY2RGB);
     	for(int r = 1; r < smooth.rows() - 1; r ++){
             for(int c = 1; c < smooth.cols() - 1; c ++){
-                double beta = calcNeighbors(smooth, r, c);
+                float beta = calcNeighbors(smooth, r, c);
                 index.put(r, c, beta);
             }
-    	}
-        for(int r = 0; r < siglar.rows(); r++){
-            for(int c = 0; c < siglar.cols(); c++){
-                if(index.get(r, c) == 1.0){
-                    opencv_imgproc.circle(rgb,new Point(r * 10, c * 10), 3, org.bytedeco.javacpp.helper.opencv_core.AbstractScalar.CYAN);
+        }
+
+        for(int r = 0; r < label.rows(); r ++){
+            for(int c = 0; c < label.cols(); c ++){
+                if(index.get(r, c) == 1){
+                    Point a = new Point(r, c);
+                    coor.add(a);
                 }
             }
         }
-        imwrite(name, rgb);
+//        for(int r = 0; r < label.rows(); r++){
+//            for(int c = 0; c < label.cols(); c++){
+//                if(index.get(r, c) == 1.0){
+//                    System.out.println(r*10 + " " + c*10);
+//                    opencv_imgproc.circle(rgb,new opencv_core.Point(r * 10, c * 10), 3, org.bytedeco.javacpp.helper.opencv_core.AbstractScalar.CYAN);
+//                }
+//            }
+//        }
+        if(coor.size() == 0){
+           //System.out.println(name);
+           opencv_imgproc.circle(rgb, new opencv_core.Point(6 * 10, 6 * 10), 3, org.bytedeco.javacpp.helper.opencv_core.AbstractScalar.CYAN);
+           crop = img.apply(new Rect(10, 10, 50, 50));
+        }
+        else{
+            Point c = findCorePoint(coor);
+            c.setX(c.getX() * 10);
+            c.setY(c.getY()* 10);
+            //System.out.println("before: " + c.getX() + " " +c.getY());
+            crop = cropFingerprint(c, img);
+            //System.out.println("affter: " + c.getX() + " " + c.getY());
+            opencv_imgproc.circle(rgb, new opencv_core.Point((int)c.getX() , (int)c.getY() ), 3, org.bytedeco.javacpp.helper.opencv_core.AbstractScalar.CYAN);
+        }
+        imwrite(name, crop);
+        return label;
+    }
+    
+    public Mat cropFingerprint(Point p, Mat img){
+        Mat crop = new Mat();
+        int radius = 50;
+        int row = img.rows();
+        int col = img.cols();
+        for(int i = 0; i < img.rows(); i++){
+            for(int j = 0; j < img.cols(); j++){
+                //  move cooridinates of Point
+                
+            }
+        }
+        //System.out.println( p.getX() + " " + p.getY() + " " + (p.getX() - radius) + " " + (p.getY()- radius));
+        crop  = img.apply(new Rect((int)p.getX() - radius, (int)p.getY()- radius, radius, radius));
+        return crop;
     }
  
-    public double calcNeighbors(Mat smooth, int i, int j){
+    public float calcNeighbors(Mat smooth, int i, int j){
         double[] deg = convertToDeg(smooth, i, j);
         double label = 0;
         for(int ele = 0; ele < deg.length - 1; ele++){
@@ -233,9 +299,9 @@ public class CorePoint {
             label += subAngles(deg[ele], deg[ele+1]);
         }
         if (label <= (180 + 1 )&& label >= (180 - 1 )){
-            return 1.0;
+            return 1;
         }
-        return 0.0 ;
+        return 0;
         
     }
 
@@ -276,4 +342,24 @@ public class CorePoint {
         }
         return deg;
     }
+    
+    public Point findCorePoint(ArrayList<Point> coordinates){
+        ArrayList<ArrayList<Double>> dis = new ArrayList<ArrayList<Double>>();
+        for(int i = 0; i < coordinates.size(); i++){
+            ArrayList<Double> cor1 = new ArrayList<>();
+            for( int j = 0; j < coordinates.size(); j++){
+                double d = coordinates.get(i).distanceAnotherPoint(coordinates.get(j));
+                if(d <= 2.0)
+                    cor1.add(d);
+            }
+        }
+        int index = 0;
+        for(int i = 0; i < dis.size(); i++){
+            if(dis.get(i).size() > index){
+                index = i;
+            }
+        }
+        return coordinates.get(index);
+    }
+
 }
