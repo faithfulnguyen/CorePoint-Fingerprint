@@ -285,7 +285,7 @@ public class CorePoint {
             }
         }
         //System.out.println( p.getX() + " " + p.getY() + " " + (p.getX() - radius) + " " + (p.getY()- radius));
-        crop  = img.apply(new Rect((int)p.getX() - radius, (int)p.getY()- radius, radius, radius));
+        crop  = img.apply(new Rect(coorinate of corepoint,  ,radius, radius));
         return crop;
     }
  
