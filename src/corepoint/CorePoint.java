@@ -250,15 +250,14 @@ public class CorePoint {
 //        for(int r = 0; r < label.rows(); r++){
 //            for(int c = 0; c < label.cols(); c++){
 //                if(index.get(r, c) == 1.0){
-//                    System.out.println(r*10 + " " + c*10);
-//                    opencv_imgproc.circle(rgb,new opencv_core.Point(r * 10, c * 10), 3, org.bytedeco.javacpp.helper.opencv_core.AbstractScalar.CYAN);
+//                    opencv_imgproc.circle(rgb, new opencv_core.Point(r * 10, c * 10), 3, org.bytedeco.javacpp.helper.opencv_core.AbstractScalar.CYAN);
 //                }
 //            }
 //        }
         if(coor.size() == 0){
            //System.out.println(name);
            opencv_imgproc.circle(rgb, new opencv_core.Point(6 * 10, 6 * 10), 3, org.bytedeco.javacpp.helper.opencv_core.AbstractScalar.CYAN);
-           crop = img.apply(new Rect(10, 10, 50, 50));
+           crop = img.apply(new Rect(40, 40, 20, 20));
         }
         else{
             Point c = findCorePoint(coor);
@@ -275,18 +274,73 @@ public class CorePoint {
     
     public Mat cropFingerprint(Point p, Mat img){
         Mat crop = new Mat();
-        int radius = 50;
-        int row = img.rows();
+        int radius = 20;
         int col = img.cols();
-        for(int i = 0; i < img.rows(); i++){
-            for(int j = 0; j < img.cols(); j++){
-                //  move cooridinates of Point
-                
-            }
+        int row = img.rows();
+        // II
+        
+        //System.out.println("1_ before: " + p.getX() + " " + p.getY());
+        if(p.getX() - radius > 0 && p.getY() - radius > 0){
+            crop = img.apply(new Rect((int)p.getX() - radius, (int)p.getY()- radius, radius*2, radius*2 ));
+            return crop;
         }
-        //System.out.println( p.getX() + " " + p.getY() + " " + (p.getX() - radius) + " " + (p.getY()- radius));
-        crop  = img.apply(new Rect(coorinate of corepoint,  ,radius, radius));
+        if(p.getX() <= col / 2 && p.getY() <= row / 2){
+            p = areaSecond(radius, p, col, row);
+        }
+        //I
+        if(p.getX() >= col / 2 && p.getY() <= row / 2){
+            p = areaFirst(radius, p, col, row);
+        }
+        // III
+        if(p.getX() <= col / 2 && p.getY() >= row / 2){
+            p = areaThirth(radius, p, col, row);
+        }
+        //IV
+        if(p.getX() >= col / 2 && p.getY() >= row /2){
+            p = areaFourth(radius, p, col, row);
+        }
+        //System.out.println("2_ affer: " + p.getX() + " " + p.getY());
+        crop = img.apply(new Rect((int)p.getX(), (int)p.getY(), radius, radius ));
         return crop;
+    }
+    
+    public Point areaFirst(int radius, Point p, int imgCols, int imgRows){
+        if(p.getX() > (imgCols - radius)){
+            p.setX((imgCols - radius));
+            
+        }
+        if(p.getY() < radius){
+            p.setY(radius);
+        }
+        return p;
+    }
+    public Point areaSecond(int radius, Point p, int imgCols, int imgRows){
+        if(p.getX()  < radius){
+            p.setX(radius);      
+        }
+        if(p.getY() < radius){
+            p.setY(radius);
+        }
+        return p;
+    }
+    
+    public Point areaThirth(int radius, Point p, int imgCols, int imgRows){
+        if(p.getX()  < radius){
+            p.setX(radius);      
+        }
+        if(p.getY() > (imgRows - radius)){
+            p.setY(imgRows - radius);
+        }
+        return p;
+    }
+    public Point areaFourth(int radius, Point p, int imgCols, int imgRows){
+        if(p.getX()  < imgCols - radius){
+            p.setX(imgCols - radius);      
+        }
+        if(p.getY() > (imgRows - radius)){
+            p.setY(imgRows - radius);
+        }
+        return p;
     }
  
     public float calcNeighbors(Mat smooth, int i, int j){
@@ -298,7 +352,7 @@ public class CorePoint {
             }
             label += subAngles(deg[ele], deg[ele+1]);
         }
-        if (label <= (180 + 1 )&& label >= (180 - 1 )){
+        if (label <= (180)&& label >= (180 )){
             return 1;
         }
         return 0;
@@ -361,5 +415,7 @@ public class CorePoint {
         }
         return coordinates.get(index);
     }
-
+    
 }
+
+// end here
