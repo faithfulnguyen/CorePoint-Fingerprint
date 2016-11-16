@@ -247,17 +247,11 @@ public class CorePoint {
                 }
             }
         }
-//        for(int r = 0; r < label.rows(); r++){
-//            for(int c = 0; c < label.cols(); c++){
-//                if(index.get(r, c) == 1.0){
-//                    opencv_imgproc.circle(rgb, new opencv_core.Point(r * 10, c * 10), 3, org.bytedeco.javacpp.helper.opencv_core.AbstractScalar.CYAN);
-//                }
-//            }
-//        }
+
         if(coor.size() == 0){
            //System.out.println(name);
            opencv_imgproc.circle(rgb, new opencv_core.Point(6 * 10, 6 * 10), 3, org.bytedeco.javacpp.helper.opencv_core.AbstractScalar.CYAN);
-           crop = img.apply(new Rect(40, 40, 20, 20));
+           crop = img.apply(new Rect(0, 0, 90, 90));
         }
         else{
             Point c = findCorePoint(coor);
@@ -277,72 +271,59 @@ public class CorePoint {
         int radius = 20;
         int col = img.cols();
         int row = img.rows();
-        // II
-        
-        //System.out.println("1_ before: " + p.getX() + " " + p.getY());
-        if(p.getX() - radius > 0 && p.getY() - radius > 0){
-            crop = img.apply(new Rect((int)p.getX() - radius, (int)p.getY()- radius, radius*2, radius*2 ));
-            return crop;
+        //System.out.println(p.getX() + " " + p.getY());
+        if(p.getY() > 0 && p.getY() <= 60){
+            //System.out.println("1");
+            crop = areaBlock(img, p);
         }
-        if(p.getX() <= col / 2 && p.getY() <= row / 2){
-            p = areaSecond(radius, p, col, row);
+        if(p.getY() > 60 && p.getY() <= 120){
+            //System.out.println("2");
+            crop = areaBlockSecond(img, p);
         }
-        //I
-        if(p.getX() >= col / 2 && p.getY() <= row / 2){
-            p = areaFirst(radius, p, col, row);
-        }
-        // III
-        if(p.getX() <= col / 2 && p.getY() >= row / 2){
-            p = areaThirth(radius, p, col, row);
-        }
-        //IV
-        if(p.getX() >= col / 2 && p.getY() >= row /2){
-            p = areaFourth(radius, p, col, row);
-        }
-        //System.out.println("2_ affer: " + p.getX() + " " + p.getY());
-        crop = img.apply(new Rect((int)p.getX(), (int)p.getY(), radius, radius ));
         return crop;
     }
     
-    public Point areaFirst(int radius, Point p, int imgCols, int imgRows){
-        if(p.getX() > (imgCols - radius)){
-            p.setX((imgCols - radius));
-            
-        }
-        if(p.getY() < radius){
-            p.setY(radius);
-        }
-        return p;
-    }
-    public Point areaSecond(int radius, Point p, int imgCols, int imgRows){
-        if(p.getX()  < radius){
-            p.setX(radius);      
-        }
-        if(p.getY() < radius){
-            p.setY(radius);
-        }
-        return p;
-    }
     
-    public Point areaThirth(int radius, Point p, int imgCols, int imgRows){
-        if(p.getX()  < radius){
-            p.setX(radius);      
+    public Mat areaBlock(Mat img, Point p){
+        Mat crop = new Mat();
+        if(p.getX() > 90){
+            //System.out.println("1_1");
+            crop = img.apply(new Rect(30, 0, 90, 90));
         }
-        if(p.getY() > (imgRows - radius)){
-            p.setY(imgRows - radius);
+        if((p.getX() > 60 && p.getX() <= 90)){
+            //System.out.println("1_2");
+            crop = img.apply(new Rect(30, 0, 90, 90));
         }
-        return p;
+        if(p.getX() > 30 && p.getX() <= 60){
+            //System.out.println("1_3");
+            crop = img.apply(new Rect(0, 0, 90, 90));
+        }
+        if(p.getX() > 0 && p.getX() <= 30){
+            //System.out.println("1_4");
+            crop = img.apply(new Rect(0, 0, 90, 90));
+        }
+        return crop;
     }
-    public Point areaFourth(int radius, Point p, int imgCols, int imgRows){
-        if(p.getX()  < imgCols - radius){
-            p.setX(imgCols - radius);      
+    public Mat areaBlockSecond(Mat img, Point p){
+        Mat crop = new Mat();
+        if(p.getX() > 90){
+            //System.out.println("2_1");
+            crop = img.apply(new Rect(30, 30, 90, 90));
         }
-        if(p.getY() > (imgRows - radius)){
-            p.setY(imgRows - radius);
+        if((p.getX() > 60 && p.getX() <= 90)){
+            //System.out.println("2_2");
+            crop = img.apply(new Rect(30, 30, 90, 90));
         }
-        return p;
+        if(p.getX() > 30 && p.getX() <= 60){
+            //System.out.println("2_3");
+            crop = img.apply(new Rect(0, 30, 90, 90));
+        }
+        if(p.getX() > 0 && p.getX() <= 30){
+           // System.out.println("2_4");
+            crop = img.apply(new Rect(0, 30, 90, 90));
+        }
+        return crop;
     }
- 
     public float calcNeighbors(Mat smooth, int i, int j){
         double[] deg = convertToDeg(smooth, i, j);
         double label = 0;
